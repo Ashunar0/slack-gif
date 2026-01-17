@@ -9,7 +9,14 @@ import {
   defaultTextConfig,
   defaultAnimationConfig,
 } from "@/types";
-import { generateAnimationFrames, encodeGIF, downloadGIF, downloadPNG } from "@/utils";
+import {
+  generateAnimationFrames,
+  encodeGIF,
+  downloadGIF,
+  downloadPNG,
+  drawTextToCanvas,
+  drawImageToCanvas,
+} from "@/utils";
 import { Type, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -79,21 +86,26 @@ export default function Home() {
   );
 
   const handleDownload = useCallback(async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // 静止画（PNG）の場合
-    if (animationConfig.type === "none") {
-      downloadPNG(canvas);
-      toast.success("PNGをダウンロードしました");
-      return;
-    }
-
-    // GIFアニメーションの場合
     setIsGenerating(true);
     try {
+      // モードに応じてキャンバスを生成
+      let sourceCanvas: HTMLCanvasElement;
+      if (mode === "image" && croppedImage) {
+        sourceCanvas = await drawImageToCanvas(croppedImage);
+      } else {
+        sourceCanvas = drawTextToCanvas(textConfig);
+      }
+
+      // 静止画（PNG）の場合
+      if (animationConfig.type === "none") {
+        downloadPNG(sourceCanvas);
+        toast.success("PNGをダウンロードしました");
+        return;
+      }
+
+      // GIFアニメーションの場合
       const frames = generateAnimationFrames(
-        canvas,
+        sourceCanvas,
         animationConfig.type,
         12
       );
@@ -108,7 +120,7 @@ export default function Home() {
     } finally {
       setIsGenerating(false);
     }
-  }, [animationConfig.type, animationConfig.speed]);
+  }, [mode, textConfig, croppedImage, animationConfig.type, animationConfig.speed]);
 
   const handleReset = useCallback(() => {
     setTextConfig(defaultTextConfig);
