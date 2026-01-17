@@ -1,19 +1,26 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { TextStampConfig } from "@/types";
+import { TextStampConfig, StampMode } from "@/types";
 import { OUTPUT_SIZE } from "@/constants";
 
 interface PreviewCanvasProps {
+  mode: StampMode;
   textConfig: TextStampConfig;
+  croppedImage: string | null;
   canvasRef?: React.RefObject<HTMLCanvasElement | null>;
 }
 
-export function PreviewCanvas({ textConfig, canvasRef }: PreviewCanvasProps) {
+export function PreviewCanvas({
+  mode,
+  textConfig,
+  croppedImage,
+  canvasRef,
+}: PreviewCanvasProps) {
   const internalRef = useRef<HTMLCanvasElement>(null);
   const ref = canvasRef || internalRef;
 
-  const drawText = useCallback(() => {
+  const drawCanvas = useCallback(() => {
     const canvas = ref.current;
     if (!canvas) return;
 
@@ -25,12 +32,27 @@ export function PreviewCanvas({ textConfig, canvasRef }: PreviewCanvasProps) {
     // Clear canvas
     ctx.clearRect(0, 0, size, size);
 
+    if (mode === "image" && croppedImage) {
+      // Draw cropped image
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, size, size);
+      };
+      img.src = croppedImage;
+      return;
+    }
+
+    // Text mode
     // Draw background
     if (!textConfig.backgroundTransparent) {
-      if (textConfig.gradient.enabled && textConfig.gradient.direction !== "horizontal") {
+      if (
+        textConfig.gradient.enabled &&
+        textConfig.gradient.direction !== "horizontal"
+      ) {
         // Background gradient
         const bgGradient = ctx.createLinearGradient(
-          0, 0,
+          0,
+          0,
           textConfig.gradient.direction === "diagonal" ? size : 0,
           size
         );
@@ -54,7 +76,6 @@ export function PreviewCanvas({ textConfig, canvasRef }: PreviewCanvasProps) {
 
     // Calculate font size to fit text
     const lines = textConfig.text.split("\n");
-    const maxLineLength = Math.max(...lines.map((line) => line.length));
     const lineCount = lines.length;
 
     // Auto-fit font size
@@ -135,11 +156,11 @@ export function PreviewCanvas({ textConfig, canvasRef }: PreviewCanvasProps) {
     });
 
     ctx.restore();
-  }, [textConfig, ref]);
+  }, [mode, textConfig, croppedImage, ref]);
 
   useEffect(() => {
-    drawText();
-  }, [drawText]);
+    drawCanvas();
+  }, [drawCanvas]);
 
   return (
     <div className="relative">

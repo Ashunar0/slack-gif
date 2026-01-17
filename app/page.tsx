@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { ColorPicker } from "@/components/color-picker";
 import { PreviewCanvas } from "@/components/preview-canvas";
+import { ImageUploader } from "@/components/image-uploader";
+import { ImageCropper } from "@/components/image-cropper";
 import {
   TextStampConfig,
   AnimationConfig,
@@ -29,6 +31,8 @@ export default function Home() {
   const [mode, setMode] = useState<StampMode>("text");
   const [textConfig, setTextConfig] = useState<TextStampConfig>(defaultTextConfig);
   const [animationConfig, setAnimationConfig] = useState<AnimationConfig>(defaultAnimationConfig);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [croppedImage, setCroppedImage] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const updateTextConfig = useCallback(
@@ -90,6 +94,22 @@ export default function Home() {
   const handleReset = useCallback(() => {
     setTextConfig(defaultTextConfig);
     setAnimationConfig(defaultAnimationConfig);
+    setUploadedImage(null);
+    setCroppedImage(null);
+  }, []);
+
+  const handleImageSelect = useCallback((imageData: string) => {
+    setUploadedImage(imageData);
+    setCroppedImage(null);
+  }, []);
+
+  const handleCropComplete = useCallback((croppedData: string) => {
+    setCroppedImage(croppedData);
+  }, []);
+
+  const handleImageClear = useCallback(() => {
+    setUploadedImage(null);
+    setCroppedImage(null);
   }, []);
 
   // Group fonts by category
@@ -525,19 +545,108 @@ export default function Home() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="image" className="mt-6">
-                <div className="panel rounded-xl p-8 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary/50 flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
+              <TabsContent value="image" className="mt-6 space-y-6">
+                {/* Upload or Crop */}
+                <div className="panel rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-5 bg-primary rounded-full" />
+                    <h2 className="font-semibold">画像選択</h2>
                   </div>
-                  <h3 className="font-semibold mb-2">画像をアップロード</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    PNG, JPG, GIF, WebP に対応
-                  </p>
-                  <Button variant="outline" className="border-dashed">
-                    ファイルを選択
-                  </Button>
+
+                  {!uploadedImage ? (
+                    <ImageUploader
+                      onImageSelect={handleImageSelect}
+                      currentImage={null}
+                      onClear={handleImageClear}
+                    />
+                  ) : !croppedImage ? (
+                    <ImageCropper
+                      imageSrc={uploadedImage}
+                      onCropComplete={handleCropComplete}
+                      onCancel={handleImageClear}
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="relative aspect-square w-full max-w-[200px] mx-auto rounded-xl overflow-hidden border border-border/50">
+                        <img
+                          src={croppedImage}
+                          alt="トリミング済み"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCroppedImage(null)}
+                          className="flex-1"
+                        >
+                          トリミングし直す
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handleImageClear}
+                          className="flex-1"
+                        >
+                          別の画像を選択
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Animation for image mode */}
+                {croppedImage && (
+                  <div className="panel rounded-xl p-5 space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Zap className="w-4 h-4 text-neon-yellow" />
+                      <h2 className="font-semibold">アニメーション</h2>
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {ANIMATION_PRESETS.map((preset) => (
+                        <button
+                          key={preset.type}
+                          onClick={() =>
+                            setAnimationConfig((prev) => ({
+                              ...prev,
+                              type: preset.type,
+                              enabled: preset.type !== "none",
+                            }))
+                          }
+                          className={`h-16 rounded-lg text-xs font-medium transition-all flex flex-col items-center justify-center gap-1 ${
+                            animationConfig.type === preset.type
+                              ? "bg-primary text-primary-foreground ring-2 ring-primary/50"
+                              : "bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <span>{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {animationConfig.type !== "none" && (
+                      <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                            速度
+                          </Label>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {animationConfig.speed}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[animationConfig.speed]}
+                          onValueChange={([v]) =>
+                            setAnimationConfig((prev) => ({ ...prev, speed: v }))
+                          }
+                          min={1}
+                          max={10}
+                          step={1}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -554,7 +663,12 @@ export default function Home() {
 
               {/* Preview Canvas */}
               <div className="flex justify-center py-8">
-                <PreviewCanvas textConfig={textConfig} canvasRef={canvasRef} />
+                <PreviewCanvas
+                  mode={mode}
+                  textConfig={textConfig}
+                  croppedImage={croppedImage}
+                  canvasRef={canvasRef}
+                />
               </div>
 
               {/* Download Button */}
@@ -562,7 +676,7 @@ export default function Home() {
                 onClick={handleDownload}
                 className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-neon-pink
                          hover:opacity-90 transition-opacity glow-neon-subtle"
-                disabled={!textConfig.text && mode === "text"}
+                disabled={(mode === "text" && !textConfig.text) || (mode === "image" && !croppedImage)}
               >
                 <Download className="w-5 h-5 mr-2" />
                 {animationConfig.type !== "none" ? "GIFをダウンロード" : "PNGをダウンロード"}
