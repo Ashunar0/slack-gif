@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -49,12 +49,13 @@ export function TextInputSection({
         >
           表示テキスト
         </Label>
-        <Input
+        <Textarea
           id="text"
           value={textConfig.text}
           onChange={(e) => onUpdateTextConfig("text", e.target.value)}
-          placeholder="スタンプのテキストを入力..."
-          className="h-12 text-lg bg-secondary/30 border-border/50 focus:border-primary/50"
+          placeholder="スタンプのテキストを入力...&#10;（改行可能）"
+          className="min-h-[80px] text-lg bg-secondary/30 border-border/50 focus:border-primary/50 resize-none"
+          rows={3}
         />
       </div>
 
