@@ -68,7 +68,7 @@ export function PreviewPanel({
             ) : (
               <>
                 <Download className="w-5 h-5 mr-2" />
-                {animationConfig.type !== "none"
+                {!animationConfig.types.includes("none")
                   ? "GIFをダウンロード"
                   : "PNGをダウンロード"}
               </>
@@ -101,7 +101,7 @@ export function PreviewPanel({
           ) : (
             <>
               <Download className="w-5 h-5 mr-2" />
-              {animationConfig.type !== "none"
+              {!animationConfig.types.includes("none")
                 ? "GIFをダウンロード"
                 : "PNGをダウンロード"}
             </>

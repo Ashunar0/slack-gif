@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { AnimationConfig } from "@/types";
+import { AnimationConfig, AnimationType } from "@/types";
 import { ANIMATION_PRESETS } from "@/constants";
 import { Zap } from "lucide-react";
 
@@ -23,28 +23,57 @@ export function AnimationSection({
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-        {ANIMATION_PRESETS.map((preset) => (
-          <button
-            key={preset.type}
-            onClick={() =>
-              onSetAnimationConfig((prev) => ({
-                ...prev,
-                type: preset.type,
-                enabled: preset.type !== "none",
-              }))
-            }
-            className={`h-16 rounded-lg text-xs font-medium transition-all flex flex-col items-center justify-center gap-1 ${
-              animationConfig.type === preset.type
-                ? "bg-primary text-primary-foreground ring-2 ring-primary/50"
-                : "bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <span>{preset.name}</span>
-          </button>
-        ))}
+        {ANIMATION_PRESETS.map((preset) => {
+          const isSelected = animationConfig.types.includes(preset.type);
+          const isNone = preset.type === "none";
+
+          return (
+            <button
+              key={preset.type}
+              onClick={() => {
+                if (isNone) {
+                  // 'none' を選択したらすべてクリア
+                  onSetAnimationConfig({
+                    types: ["none"],
+                    speed: animationConfig.speed,
+                    enabled: false,
+                  });
+                } else {
+                  // トグル動作
+                  onSetAnimationConfig((prev) => {
+                    let newTypes: AnimationType[];
+                    if (isSelected) {
+                      // 選択解除
+                      newTypes = prev.types.filter((t) => t !== preset.type);
+                      // 空になったら 'none' を追加
+                      if (newTypes.length === 0) {
+                        newTypes = ["none"];
+                      }
+                    } else {
+                      // 選択追加（'none' を除外）
+                      newTypes = [...prev.types.filter((t) => t !== "none"), preset.type];
+                    }
+                    return {
+                      ...prev,
+                      types: newTypes,
+                      enabled: !newTypes.includes("none"),
+                    };
+                  });
+                }
+              }}
+              className={`h-16 rounded-lg text-xs font-medium transition-all flex flex-col items-center justify-center gap-1 ${
+                isSelected
+                  ? "bg-primary text-primary-foreground ring-2 ring-primary/50"
+                  : "bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>{preset.name}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {animationConfig.type !== "none" && (
+      {!animationConfig.types.includes("none") && (
         <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between">
             <Label className="text-xs text-muted-foreground uppercase tracking-wider">

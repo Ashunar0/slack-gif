@@ -182,17 +182,55 @@ export function applyHueRotate(
   return resultCanvas;
 }
 
-// アニメーションフレームを生成
+// 複数のアニメーション変換を合成
+export function combineTransforms(transforms: FrameTransform[]): FrameTransform {
+  if (transforms.length === 0) {
+    return {
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+      rotation: 0,
+      opacity: 1,
+      hueRotate: 0,
+    };
+  }
+
+  // 各プロパティを合成
+  return transforms.reduce((combined, transform) => ({
+    offsetX: combined.offsetX + transform.offsetX,
+    offsetY: combined.offsetY + transform.offsetY,
+    scale: combined.scale * transform.scale,
+    rotation: combined.rotation + transform.rotation,
+    opacity: combined.opacity * transform.opacity,
+    hueRotate: combined.hueRotate + transform.hueRotate,
+  }));
+}
+
+// アニメーションフレームを生成（複数のアニメーションタイプに対応）
 export function generateAnimationFrames(
   sourceCanvas: HTMLCanvasElement,
-  animationType: AnimationType,
+  animationTypes: AnimationType[],
   frameCount: number = GIF_CONFIG.FRAME_COUNT
 ): HTMLCanvasElement[] {
   const frames: HTMLCanvasElement[] = [];
 
+  // 'none' だけの場合や空配列の場合は1フレームのみ
+  const activeTypes = animationTypes.filter(type => type !== 'none');
+  if (activeTypes.length === 0) {
+    return [sourceCanvas];
+  }
+
   for (let i = 0; i < frameCount; i++) {
-    const transform = calculateFrameTransform(animationType, i, frameCount);
-    const frameCanvas = applyFrameTransform(sourceCanvas, transform);
+    // 各アニメーションタイプの変換を計算
+    const transforms = activeTypes.map(type =>
+      calculateFrameTransform(type, i, frameCount)
+    );
+
+    // 変換を合成
+    const combinedTransform = combineTransforms(transforms);
+
+    // フレームに適用
+    const frameCanvas = applyFrameTransform(sourceCanvas, combinedTransform);
     frames.push(frameCanvas);
   }
 

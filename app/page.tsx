@@ -98,7 +98,7 @@ export default function Home() {
       }
 
       // 静止画（PNG）の場合
-      if (animationConfig.type === "none") {
+      if (animationConfig.types.includes("none") || animationConfig.types.length === 0) {
         downloadPNG(sourceCanvas);
         toast.success("PNGをダウンロードしました");
         return;
@@ -107,7 +107,7 @@ export default function Home() {
       // GIFアニメーションの場合
       const frames = generateAnimationFrames(
         sourceCanvas,
-        animationConfig.type,
+        animationConfig.types,
         GIF_CONFIG.FRAME_COUNT
       );
       const blob = await encodeGIF(frames, animationConfig.speed);
@@ -121,7 +121,7 @@ export default function Home() {
     } finally {
       setIsGenerating(false);
     }
-  }, [mode, textConfig, croppedImage, animationConfig.type, animationConfig.speed]);
+  }, [mode, textConfig, croppedImage, animationConfig.types, animationConfig.speed]);
 
   const handleReset = useCallback(() => {
     setTextConfig(defaultTextConfig);

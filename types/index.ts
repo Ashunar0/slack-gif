@@ -69,7 +69,7 @@ export type AnimationType =
 
 // アニメーション設定
 export interface AnimationConfig {
-  type: AnimationType;
+  types: AnimationType[]; // 複数のアニメーションを配列で保持
   speed: number; // 1-10
   enabled: boolean;
 }
@@ -138,7 +138,7 @@ export const defaultImageConfig: ImageStampConfig = {
 };
 
 export const defaultAnimationConfig: AnimationConfig = {
-  type: 'none',
+  types: ['none'],
   speed: 5,
   enabled: false,
 };

@@ -5,7 +5,7 @@ import { TextStampConfig, StampMode, AnimationConfig } from "@/types";
 import { OUTPUT_SIZE, GIF_CONFIG } from "@/constants";
 import { Type, ImageIcon } from "lucide-react";
 import { useDebounce } from "@/hooks";
-import { calculateFrameTransform, applyHueRotate } from "@/utils/animations";
+import { calculateFrameTransform, combineTransforms } from "@/utils/animations";
 
 interface PreviewCanvasProps {
   mode: StampMode;
@@ -168,7 +168,9 @@ export function PreviewCanvas({
 
   // アニメーションフレームの描画
   useEffect(() => {
-    if (!animationConfig || animationConfig.type === "none") {
+    const hasAnimation = animationConfig && !animationConfig.types.includes("none");
+
+    if (!hasAnimation) {
       // アニメーションなしの場合は静止画のみ表示
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -216,12 +218,12 @@ export function PreviewCanvas({
         frameIndexRef.current = (frameIndexRef.current + 1) % totalFrames;
         lastFrameTimeRef.current = timestamp;
 
-        // 変換を計算
-        const transform = calculateFrameTransform(
-          animationConfig.type,
-          frameIndexRef.current,
-          totalFrames
+        // 各アニメーションタイプの変換を計算して合成
+        const activeTypes = animationConfig.types.filter(type => type !== "none");
+        const transforms = activeTypes.map(type =>
+          calculateFrameTransform(type, frameIndexRef.current, totalFrames)
         );
+        const transform = combineTransforms(transforms);
 
         // キャンバスをクリア（背景は透明のまま）
         ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
@@ -234,7 +236,7 @@ export function PreviewCanvas({
         ctx.globalAlpha = transform.opacity;
 
         // 色相回転
-        if (animationConfig.type === "rainbow") {
+        if (transform.hueRotate !== 0) {
           ctx.filter = `hue-rotate(${transform.hueRotate}deg)`;
         }
 
