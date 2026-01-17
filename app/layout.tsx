@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { GOOGLE_FONTS_URL } from "@/constants/fonts";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Slack Stamp Studio",
@@ -14,18 +15,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="dark">
+    <html lang="ja" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href={GOOGLE_FONTS_URL} rel="stylesheet" />
       </head>
       <body
-        className="font-sans antialiased bg-zinc-950 text-zinc-100 min-h-screen"
-        suppressHydrationWarning={true}
+        className="font-sans antialiased min-h-screen"
+        suppressHydrationWarning
       >
-        {children}
-        <Toaster richColors position="bottom-right" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster richColors position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

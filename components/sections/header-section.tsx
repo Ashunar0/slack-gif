@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Sparkles, RotateCcw } from "lucide-react";
 
 interface HeaderSectionProps {
@@ -29,7 +30,8 @@ export function HeaderSection({ onReset }: HeaderSectionProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"
