@@ -149,9 +149,6 @@ export async function encodeGIF(
   // GIFエンコーダーを作成
   const gif = GIFEncoder();
 
-  // 透明色として使う色（パレットに必ず含める）
-  const transparentColor = [0, 0, 0]; // RGB: 黒
-
   // 全フレーム共通のパレットを生成するため、全フレームのデータを集める
   const frameDataList: ImageData[] = [];
   const allPixels: number[] = [];
@@ -177,8 +174,8 @@ export async function encodeGIF(
 
   // 共通パレットを生成（透明色を含める）
   const globalPalette = quantize(new Uint8Array(allPixels), 256, {
-    format: "rgba444",
-    oneBit: true, // 透明/不透明の2値化
+    format: "rgba4444",
+    oneBitAlpha: true, // 透明/不透明の2値化
   });
 
   // 透明色のインデックスを特定
@@ -202,7 +199,7 @@ export async function encodeGIF(
 
     // グローバルパレットを適用してインデックスカラーに変換
     const index = applyPalette(rgbaData, globalPalette, {
-      format: "rgba444",
+      format: "rgba4444",
     });
 
     // フレームを追加
@@ -212,13 +209,15 @@ export async function encodeGIF(
         delay,
         first: true,
         repeat: 0, // 0 = 無限ループ
-        transparent: hasTransparent ? transparentIndex : undefined, // 透明色のインデックスを指定
+        transparent: hasTransparent,
+        transparentIndex, // 透明色のインデックスを指定
         disposal: 2, // 前フレームを背景色（透明）にクリア
       });
     } else {
       gif.writeFrame(index, size, size, {
         delay,
-        transparent: hasTransparent ? transparentIndex : undefined,
+        transparent: hasTransparent,
+        transparentIndex,
         disposal: 2,
       });
     }
