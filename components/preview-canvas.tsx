@@ -191,9 +191,7 @@ export function PreviewCanvas({
     baseCanvas.height = OUTPUT_SIZE;
     const baseCtx = baseCanvas.getContext("2d")!;
 
-    // 白背景で塗りつぶし
-    baseCtx.fillStyle = "#ffffff";
-    baseCtx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+    // 背景は透明のまま（塗りつぶさない）
 
     // 基本フレームを描画
     drawStaticFrame(baseCtx, OUTPUT_SIZE);
@@ -220,10 +218,8 @@ export function PreviewCanvas({
           totalFrames
         );
 
-        // キャンバスをクリアして白背景を追加
+        // キャンバスをクリア（背景は透明のまま）
         ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
         // 変換を適用して描画
         ctx.save();

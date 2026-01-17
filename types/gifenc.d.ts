@@ -5,6 +5,20 @@ declare module "gifenc" {
     first?: boolean;
     repeat?: number;
     disposal?: number;
+    transparent?: number;
+  }
+
+  export interface QuantizeOptions {
+    format?: "rgb444" | "rgb565" | "rgba444";
+    oneBit?: boolean;
+    clearAlpha?: boolean;
+    clearAlphaColor?: number;
+    clearAlphaThreshold?: number;
+  }
+
+  export interface ApplyPaletteOptions {
+    format?: "rgb444" | "rgb565" | "rgba444";
+    oneBit?: boolean;
   }
 
   export interface GIFEncoderInstance {
@@ -19,6 +33,14 @@ declare module "gifenc" {
   }
 
   export function GIFEncoder(): GIFEncoderInstance;
-  export function quantize(data: Uint8Array, maxColors: number): number[][];
-  export function applyPalette(data: Uint8Array, palette: number[][]): Uint8Array;
+  export function quantize(
+    data: Uint8Array,
+    maxColors: number,
+    options?: QuantizeOptions
+  ): number[][];
+  export function applyPalette(
+    data: Uint8Array,
+    palette: number[][],
+    options?: ApplyPaletteOptions
+  ): Uint8Array;
 }

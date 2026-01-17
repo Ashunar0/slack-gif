@@ -129,9 +129,7 @@ export function applyFrameTransform(
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
 
-  // 白背景で塗りつぶし
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, size, size);
+  // 背景は透明のまま（塗りつぶさない）
 
   // 変換の準備
   ctx.save();
