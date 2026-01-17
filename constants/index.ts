@@ -40,3 +40,14 @@ export const GRADIENT_PRESETS = [
   { name: '宇宙', startColor: '#4facfe', endColor: '#00f2fe' },
   { name: 'ゴールド', startColor: '#f7971e', endColor: '#ffd200' },
 ];
+
+// GIFアニメーション設定
+export const GIF_CONFIG = {
+  FRAME_COUNT: 12, // 1ループあたりのフレーム数
+  // 速度（1-10）からフレーム遅延（ミリ秒）を計算
+  getFrameDelay: (speed: number): number => {
+    // 速度が高いほど遅延が短い（速い）
+    // 速度1 = 200ms, 速度10 = 20ms
+    return Math.max(20, Math.min(200, 220 - speed * 20));
+  },
+};

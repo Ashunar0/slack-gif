@@ -17,6 +17,7 @@ import {
   drawTextToCanvas,
   drawImageToCanvas,
 } from "@/utils";
+import { GIF_CONFIG } from "@/constants";
 import { Type, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -107,7 +108,7 @@ export default function Home() {
       const frames = generateAnimationFrames(
         sourceCanvas,
         animationConfig.type,
-        12
+        GIF_CONFIG.FRAME_COUNT
       );
       const blob = await encodeGIF(frames, animationConfig.speed);
       downloadGIF(blob);

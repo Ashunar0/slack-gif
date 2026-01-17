@@ -10,6 +10,10 @@ export function drawImageToCanvas(imageSrc: string): Promise<HTMLCanvasElement> 
     canvas.height = OUTPUT_SIZE;
     const ctx = canvas.getContext("2d")!;
 
+    // 白背景で塗りつぶし
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
     const img = new Image();
     img.onload = () => {
       ctx.drawImage(img, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
@@ -28,7 +32,11 @@ export function drawTextToCanvas(textConfig: TextStampConfig): HTMLCanvasElement
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
 
-  // 背景を描画
+  // 白背景で塗りつぶし（デフォルト）
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+
+  // カスタム背景を描画
   if (!textConfig.backgroundTransparent) {
     if (
       textConfig.gradient.enabled &&
@@ -140,45 +148,61 @@ export async function encodeGIF(
   // GIFエンコーダーを作成
   const gif = GIFEncoder();
 
+  // 全フレーム共通のパレットを生成するため、全フレームのデータを集める
+  const frameDataList: ImageData[] = [];
+  const allPixels: number[] = [];
+
+  // 各フレームのImageDataを取得し、全ピクセルのRGBAを収集
   for (let frameIndex = 0; frameIndex < frames.length; frameIndex++) {
     const frame = frames[frameIndex];
     const ctx = frame.getContext("2d")!;
     const imageData = ctx.getImageData(0, 0, size, size);
+    frameDataList.push(imageData);
+
+    // 全ピクセルのRGBA値を収集（白背景と合成済み）
+    const { data } = imageData;
+    for (let i = 0; i < size * size; i++) {
+      const alpha = data[i * 4 + 3] / 255;
+      // アルファブレンディング: 白背景と合成してRGBAとして保存
+      const r = Math.round(data[i * 4] * alpha + 255 * (1 - alpha));
+      const g = Math.round(data[i * 4 + 1] * alpha + 255 * (1 - alpha));
+      const b = Math.round(data[i * 4 + 2] * alpha + 255 * (1 - alpha));
+      allPixels.push(r, g, b, 255); // RGBA形式：アルファは常に255（不透明）
+    }
+  }
+
+  // 共通パレットを生成（RGBA配列から）
+  const globalPalette = quantize(new Uint8Array(allPixels), 256);
+
+  // 各フレームをエンコード
+  for (let frameIndex = 0; frameIndex < frameDataList.length; frameIndex++) {
+    const imageData = frameDataList[frameIndex];
     const { data } = imageData;
 
-    // RGBA から RGB に変換（透明部分は白で埋める）
-    const rgbData = new Uint8Array(size * size * 3);
+    // RGBAデータを作成（白背景と合成済み）
+    const rgbaData = new Uint8Array(size * size * 4);
     for (let i = 0; i < size * size; i++) {
-      const alpha = data[i * 4 + 3];
-      if (alpha < 128) {
-        // 透明部分は白
-        rgbData[i * 3] = 255;
-        rgbData[i * 3 + 1] = 255;
-        rgbData[i * 3 + 2] = 255;
-      } else {
-        rgbData[i * 3] = data[i * 4];
-        rgbData[i * 3 + 1] = data[i * 4 + 1];
-        rgbData[i * 3 + 2] = data[i * 4 + 2];
-      }
+      const alpha = data[i * 4 + 3] / 255;
+      // アルファブレンディング: 白背景と合成
+      rgbaData[i * 4] = Math.round(data[i * 4] * alpha + 255 * (1 - alpha));
+      rgbaData[i * 4 + 1] = Math.round(data[i * 4 + 1] * alpha + 255 * (1 - alpha));
+      rgbaData[i * 4 + 2] = Math.round(data[i * 4 + 2] * alpha + 255 * (1 - alpha));
+      rgbaData[i * 4 + 3] = 255; // アルファは常に255（不透明）
     }
 
-    // パレットを生成（256色に量子化）
-    const palette = quantize(rgbData, 256);
+    // グローバルパレットを適用してインデックスカラーに変換
+    const index = applyPalette(rgbaData, globalPalette);
 
-    // パレットを適用してインデックスカラーに変換
-    const index = applyPalette(rgbData, palette);
-
-    // フレームを追加（最初のフレームにはループ設定を含める）
+    // フレームを追加
     if (frameIndex === 0) {
       gif.writeFrame(index, size, size, {
-        palette,
+        palette: globalPalette,
         delay,
         first: true,
         repeat: 0, // 0 = 無限ループ
       });
     } else {
       gif.writeFrame(index, size, size, {
-        palette,
         delay,
       });
     }

@@ -129,6 +129,13 @@ export function applyFrameTransform(
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
 
+  // 白背景で塗りつぶし
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+
+  // 変換の準備
+  ctx.save();
+
   // 中心を原点に移動
   ctx.translate(size / 2, size / 2);
 
@@ -139,8 +146,10 @@ export function applyFrameTransform(
   // 透明度
   ctx.globalAlpha = transform.opacity;
 
-  // 色相回転（hue-rotate）はCanvasでは直接できないので、
-  // rainbowの場合は別処理が必要
+  // 色相回転（filterを使用）
+  if (transform.hueRotate !== 0) {
+    ctx.filter = `hue-rotate(${transform.hueRotate}deg)`;
+  }
 
   // 描画
   ctx.drawImage(
@@ -150,6 +159,8 @@ export function applyFrameTransform(
     size,
     size
   );
+
+  ctx.restore();
 
   return canvas;
 }
@@ -183,13 +194,7 @@ export function generateAnimationFrames(
 
   for (let i = 0; i < frameCount; i++) {
     const transform = calculateFrameTransform(animationType, i, frameCount);
-    let frameCanvas = applyFrameTransform(sourceCanvas, transform);
-
-    // rainbow の場合は色相回転を適用
-    if (animationType === "rainbow") {
-      frameCanvas = applyHueRotate(frameCanvas, transform.hueRotate);
-    }
-
+    const frameCanvas = applyFrameTransform(sourceCanvas, transform);
     frames.push(frameCanvas);
   }
 

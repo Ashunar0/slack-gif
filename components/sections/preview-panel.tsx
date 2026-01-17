@@ -48,6 +48,7 @@ export function PreviewPanel({
               mode={mode}
               textConfig={textConfig}
               croppedImage={croppedImage}
+              animationConfig={animationConfig}
               canvasRef={canvasRef}
             />
           </div>

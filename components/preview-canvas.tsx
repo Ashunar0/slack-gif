@@ -1,15 +1,17 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useMemo } from "react";
-import { TextStampConfig, StampMode } from "@/types";
-import { OUTPUT_SIZE } from "@/constants";
+import { useRef, useEffect } from "react";
+import { TextStampConfig, StampMode, AnimationConfig } from "@/types";
+import { OUTPUT_SIZE, GIF_CONFIG } from "@/constants";
 import { Type, ImageIcon } from "lucide-react";
 import { useDebounce } from "@/hooks";
+import { calculateFrameTransform, applyHueRotate } from "@/utils/animations";
 
 interface PreviewCanvasProps {
   mode: StampMode;
   textConfig: TextStampConfig;
   croppedImage: string | null;
+  animationConfig?: AnimationConfig;
   canvasRef?: React.RefObject<HTMLCanvasElement | null>;
 }
 
@@ -17,23 +19,20 @@ export function PreviewCanvas({
   mode,
   textConfig,
   croppedImage,
+  animationConfig,
   canvasRef,
 }: PreviewCanvasProps) {
   const internalRef = useRef<HTMLCanvasElement>(null);
   const ref = canvasRef || internalRef;
+  const animationFrameRef = useRef<number | null>(null);
+  const frameIndexRef = useRef<number>(0);
+  const lastFrameTimeRef = useRef<number>(0);
 
   // Debounce text config changes for smoother rendering
   const debouncedTextConfig = useDebounce(textConfig, 50);
 
-  const drawCanvas = useCallback(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const size = OUTPUT_SIZE;
-
+  // 静止画の描画関数
+  const drawStaticFrame = (ctx: CanvasRenderingContext2D, size: number) => {
     // Clear canvas
     ctx.clearRect(0, 0, size, size);
 
@@ -47,8 +46,7 @@ export function PreviewCanvas({
       return;
     }
 
-    // Text mode
-    // Draw background
+    // Text mode - draw background
     if (!debouncedTextConfig.backgroundTransparent) {
       if (
         debouncedTextConfig.gradient.enabled &&
@@ -161,11 +159,107 @@ export function PreviewCanvas({
     });
 
     ctx.restore();
-  }, [mode, debouncedTextConfig, croppedImage, ref]);
+  };
 
+  // アニメーションフレームの描画
   useEffect(() => {
-    drawCanvas();
-  }, [drawCanvas]);
+    if (!animationConfig || animationConfig.type === "none") {
+      // アニメーションなしの場合は静止画のみ表示
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+
+      const canvas = ref.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      drawStaticFrame(ctx, OUTPUT_SIZE);
+      return;
+    }
+
+    // アニメーションがある場合
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // 基本となるキャンバスを作成
+    const baseCanvas = document.createElement("canvas");
+    baseCanvas.width = OUTPUT_SIZE;
+    baseCanvas.height = OUTPUT_SIZE;
+    const baseCtx = baseCanvas.getContext("2d")!;
+
+    // 白背景で塗りつぶし
+    baseCtx.fillStyle = "#ffffff";
+    baseCtx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+    // 基本フレームを描画
+    drawStaticFrame(baseCtx, OUTPUT_SIZE);
+
+    const frameDelay = GIF_CONFIG.getFrameDelay(animationConfig.speed);
+    const totalFrames = GIF_CONFIG.FRAME_COUNT;
+
+    const animate = (timestamp: number) => {
+      if (!lastFrameTimeRef.current) {
+        lastFrameTimeRef.current = timestamp;
+      }
+
+      const elapsed = timestamp - lastFrameTimeRef.current;
+
+      if (elapsed >= frameDelay) {
+        // フレームを更新
+        frameIndexRef.current = (frameIndexRef.current + 1) % totalFrames;
+        lastFrameTimeRef.current = timestamp;
+
+        // 変換を計算
+        const transform = calculateFrameTransform(
+          animationConfig.type,
+          frameIndexRef.current,
+          totalFrames
+        );
+
+        // キャンバスをクリアして白背景を追加
+        ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+        // 変換を適用して描画
+        ctx.save();
+        ctx.translate(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2);
+        ctx.rotate((transform.rotation * Math.PI) / 180);
+        ctx.scale(transform.scale, transform.scale);
+        ctx.globalAlpha = transform.opacity;
+
+        // 色相回転
+        if (animationConfig.type === "rainbow") {
+          ctx.filter = `hue-rotate(${transform.hueRotate}deg)`;
+        }
+
+        ctx.drawImage(
+          baseCanvas,
+          -OUTPUT_SIZE / 2 + transform.offsetX,
+          -OUTPUT_SIZE / 2 + transform.offsetY,
+          OUTPUT_SIZE,
+          OUTPUT_SIZE
+        );
+
+        ctx.restore();
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [mode, debouncedTextConfig, croppedImage, animationConfig]);
 
   const isEmpty =
     (mode === "text" && !textConfig.text) ||
