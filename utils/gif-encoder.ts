@@ -211,14 +211,14 @@ export async function encodeGIF(
         repeat: 0, // 0 = 無限ループ
         transparent: hasTransparent,
         transparentIndex, // 透明色のインデックスを指定
-        disposal: 2, // 前フレームを背景色（透明）にクリア
+        dispose: 2, // 前フレームを背景色（透明）にクリア
       });
     } else {
       gif.writeFrame(index, size, size, {
         delay,
         transparent: hasTransparent,
         transparentIndex,
-        disposal: 2,
+        dispose: 2,
       });
     }
   }
