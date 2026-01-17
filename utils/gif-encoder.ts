@@ -75,17 +75,22 @@ export function drawTextToCanvas(textConfig: TextStampConfig): HTMLCanvasElement
   }
 
   const totalHeight = fontSize * lineCount * 1.2;
-  const scaleX = textWidth > maxWidth ? maxWidth / textWidth : 1;
-  const scaleY = totalHeight > maxHeight ? maxHeight / totalHeight : 1;
-  const scale = Math.min(scaleX, scaleY);
+  let scaleX = textWidth > maxWidth ? maxWidth / textWidth : 1;
+  let scaleY = totalHeight > maxHeight ? maxHeight / totalHeight : 1;
 
-  if (scale < 1) {
-    fontSize *= scale;
-    ctx.font = `bold ${fontSize}px "${textConfig.fontFamily}"`;
+  // 横幅が収まらない場合は、横を縮小しつつ縦を引き伸ばす
+  if (scaleX < 1 && scaleY >= 1) {
+    // 縦に余裕がある場合、縦を引き伸ばして相対的に細長くする
+    scaleY = 1 / scaleX;
   }
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
+  // 横と縦のスケールを適用
+  if (scaleX !== 1 || scaleY !== 1) {
+    ctx.scale(scaleX, scaleY);
+  }
 
   const lineHeight = fontSize * 1.2;
   const startY = -((lineCount - 1) * lineHeight) / 2;
