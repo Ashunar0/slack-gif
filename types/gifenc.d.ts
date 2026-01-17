@@ -1,9 +1,10 @@
 declare module "gifenc" {
   export interface WriteFrameOptions {
-    palette: number[][];
+    palette?: number[][];
     delay?: number;
     first?: boolean;
     repeat?: number;
+    disposal?: number;
   }
 
   export interface GIFEncoderInstance {
