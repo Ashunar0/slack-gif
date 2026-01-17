@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { GOOGLE_FONTS_URL } from "@/constants/fonts";
+import { Toaster } from "@/components/ui/sonner";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -37,6 +38,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         {children}
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   );

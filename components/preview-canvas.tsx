@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useMemo } from "react";
 import { TextStampConfig, StampMode } from "@/types";
 import { OUTPUT_SIZE } from "@/constants";
+import { Type, ImageIcon } from "lucide-react";
+import { useDebounce } from "@/hooks";
 
 interface PreviewCanvasProps {
   mode: StampMode;
@@ -19,6 +21,9 @@ export function PreviewCanvas({
 }: PreviewCanvasProps) {
   const internalRef = useRef<HTMLCanvasElement>(null);
   const ref = canvasRef || internalRef;
+
+  // Debounce text config changes for smoother rendering
+  const debouncedTextConfig = useDebounce(textConfig, 50);
 
   const drawCanvas = useCallback(() => {
     const canvas = ref.current;
@@ -44,43 +49,43 @@ export function PreviewCanvas({
 
     // Text mode
     // Draw background
-    if (!textConfig.backgroundTransparent) {
+    if (!debouncedTextConfig.backgroundTransparent) {
       if (
-        textConfig.gradient.enabled &&
-        textConfig.gradient.direction !== "horizontal"
+        debouncedTextConfig.gradient.enabled &&
+        debouncedTextConfig.gradient.direction !== "horizontal"
       ) {
         // Background gradient
         const bgGradient = ctx.createLinearGradient(
           0,
           0,
-          textConfig.gradient.direction === "diagonal" ? size : 0,
+          debouncedTextConfig.gradient.direction === "diagonal" ? size : 0,
           size
         );
-        bgGradient.addColorStop(0, textConfig.gradient.startColor);
-        bgGradient.addColorStop(1, textConfig.gradient.endColor);
+        bgGradient.addColorStop(0, debouncedTextConfig.gradient.startColor);
+        bgGradient.addColorStop(1, debouncedTextConfig.gradient.endColor);
         ctx.fillStyle = bgGradient;
       } else {
-        ctx.fillStyle = textConfig.backgroundColor;
+        ctx.fillStyle = debouncedTextConfig.backgroundColor;
       }
       ctx.fillRect(0, 0, size, size);
     }
 
-    if (!textConfig.text) return;
+    if (!debouncedTextConfig.text) return;
 
     // Save context state
     ctx.save();
 
     // Move to center and apply rotation
     ctx.translate(size / 2, size / 2);
-    ctx.rotate((textConfig.rotation * Math.PI) / 180);
+    ctx.rotate((debouncedTextConfig.rotation * Math.PI) / 180);
 
     // Calculate font size to fit text
-    const lines = textConfig.text.split("\n");
+    const lines = debouncedTextConfig.text.split("\n");
     const lineCount = lines.length;
 
     // Auto-fit font size
-    let fontSize = textConfig.fontSize;
-    ctx.font = `bold ${fontSize}px "${textConfig.fontFamily}"`;
+    let fontSize = debouncedTextConfig.fontSize;
+    ctx.font = `bold ${fontSize}px "${debouncedTextConfig.fontFamily}"`;
 
     // Measure and adjust
     const maxWidth = size * 0.85;
@@ -101,7 +106,7 @@ export function PreviewCanvas({
 
     if (scale < 1) {
       fontSize *= scale;
-      ctx.font = `bold ${fontSize}px "${textConfig.fontFamily}"`;
+      ctx.font = `bold ${fontSize}px "${debouncedTextConfig.fontFamily}"`;
     }
 
     // Set text styles
@@ -116,34 +121,34 @@ export function PreviewCanvas({
       const y = startY + index * lineHeight;
 
       // Shadow
-      if (textConfig.shadow.enabled) {
-        ctx.shadowColor = textConfig.shadow.color;
-        ctx.shadowBlur = textConfig.shadow.blur;
-        ctx.shadowOffsetX = textConfig.shadow.offsetX;
-        ctx.shadowOffsetY = textConfig.shadow.offsetY;
+      if (debouncedTextConfig.shadow.enabled) {
+        ctx.shadowColor = debouncedTextConfig.shadow.color;
+        ctx.shadowBlur = debouncedTextConfig.shadow.blur;
+        ctx.shadowOffsetX = debouncedTextConfig.shadow.offsetX;
+        ctx.shadowOffsetY = debouncedTextConfig.shadow.offsetY;
       }
 
       // Stroke (outline)
-      if (textConfig.stroke.enabled) {
-        ctx.strokeStyle = textConfig.stroke.color;
-        ctx.lineWidth = textConfig.stroke.width * 2;
+      if (debouncedTextConfig.stroke.enabled) {
+        ctx.strokeStyle = debouncedTextConfig.stroke.color;
+        ctx.lineWidth = debouncedTextConfig.stroke.width * 2;
         ctx.lineJoin = "round";
         ctx.strokeText(line, 0, y);
       }
 
       // Fill with gradient or solid color
-      if (textConfig.gradient.enabled) {
+      if (debouncedTextConfig.gradient.enabled) {
         const gradient = ctx.createLinearGradient(
-          textConfig.gradient.direction === "vertical" ? 0 : -size / 2,
-          textConfig.gradient.direction === "horizontal" ? 0 : -size / 2,
-          textConfig.gradient.direction === "vertical" ? 0 : size / 2,
-          textConfig.gradient.direction === "horizontal" ? 0 : size / 2
+          debouncedTextConfig.gradient.direction === "vertical" ? 0 : -size / 2,
+          debouncedTextConfig.gradient.direction === "horizontal" ? 0 : -size / 2,
+          debouncedTextConfig.gradient.direction === "vertical" ? 0 : size / 2,
+          debouncedTextConfig.gradient.direction === "horizontal" ? 0 : size / 2
         );
-        gradient.addColorStop(0, textConfig.gradient.startColor);
-        gradient.addColorStop(1, textConfig.gradient.endColor);
+        gradient.addColorStop(0, debouncedTextConfig.gradient.startColor);
+        gradient.addColorStop(1, debouncedTextConfig.gradient.endColor);
         ctx.fillStyle = gradient;
       } else {
-        ctx.fillStyle = textConfig.color;
+        ctx.fillStyle = debouncedTextConfig.color;
       }
 
       // Reset shadow for fill
@@ -156,11 +161,15 @@ export function PreviewCanvas({
     });
 
     ctx.restore();
-  }, [mode, textConfig, croppedImage, ref]);
+  }, [mode, debouncedTextConfig, croppedImage, ref]);
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  const isEmpty =
+    (mode === "text" && !textConfig.text) ||
+    (mode === "image" && !croppedImage);
 
   return (
     <div className="relative">
@@ -171,14 +180,31 @@ export function PreviewCanvas({
       <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-primary/60" />
 
       {/* Canvas container with transparency grid */}
-      <div className="transparency-grid rounded-lg p-0 overflow-hidden">
+      <div className="transparency-grid rounded-lg p-0 overflow-hidden relative w-[200px] h-[200px] sm:w-[256px] sm:h-[256px]">
         <canvas
           ref={ref}
           width={OUTPUT_SIZE}
           height={OUTPUT_SIZE}
-          className="block"
-          style={{ width: OUTPUT_SIZE * 2, height: OUTPUT_SIZE * 2 }}
+          className="block w-full h-full"
         />
+
+        {/* Empty state overlay */}
+        {isEmpty && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="w-16 h-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-3">
+              {mode === "text" ? (
+                <Type className="w-8 h-8 text-muted-foreground/50" />
+              ) : (
+                <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground/70 text-center px-4">
+              {mode === "text"
+                ? "テキストを入力してください"
+                : "画像を選択してください"}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Size indicator */}

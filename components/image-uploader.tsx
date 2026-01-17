@@ -2,9 +2,9 @@
 
 import { useCallback, useState } from "react";
 import { Upload, X, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SUPPORTED_IMAGE_FORMATS, MAX_FILE_SIZE } from "@/constants";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ImageUploaderProps {
   onImageSelect: (imageData: string) => void;
@@ -36,6 +36,9 @@ export function ImageUploader({
       const validationError = validateFile(file);
       if (validationError) {
         setError(validationError);
+        toast.error("画像を読み込めませんでした", {
+          description: validationError,
+        });
         return;
       }
 
@@ -43,6 +46,11 @@ export function ImageUploader({
       reader.onload = (e) => {
         const result = e.target?.result as string;
         onImageSelect(result);
+        toast.success("画像を読み込みました");
+      };
+      reader.onerror = () => {
+        setError("ファイルの読み込みに失敗しました");
+        toast.error("ファイルの読み込みに失敗しました");
       };
       reader.readAsDataURL(file);
     },
